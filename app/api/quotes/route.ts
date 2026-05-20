@@ -6,7 +6,85 @@ import type { Quote } from "@/lib/quotes";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type Source = "yahoo" | "stooq" | "none";
+type Source = "finnhub" | "yahoo" | "stooq" | "none";
+
+type FinnhubQuote = {
+  c?: number;
+  d?: number;
+  dp?: number;
+  pc?: number;
+  t?: number;
+};
+
+type FinnhubProfile = {
+  marketCapitalization?: number;
+  currency?: string;
+  exchange?: string;
+};
+
+async function finnhubOne(
+  ticker: string,
+  key: string
+): Promise<Quote | null> {
+  try {
+    const [qRes, pRes] = await Promise.all([
+      fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${key}`,
+        { cache: "no-store" }
+      ),
+      fetch(
+        `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${key}`,
+        { cache: "no-store" }
+      ),
+    ]);
+    if (!qRes.ok) return null;
+    const q = (await qRes.json()) as FinnhubQuote;
+    const p = pRes.ok ? ((await pRes.json()) as FinnhubProfile) : {};
+    const price = typeof q.c === "number" && q.c > 0 ? q.c : null;
+    if (price === null) return null;
+    return {
+      symbol: ticker,
+      price,
+      change: typeof q.d === "number" ? q.d : null,
+      changePercent: typeof q.dp === "number" ? q.dp : null,
+      marketCap:
+        typeof p.marketCapitalization === "number"
+          ? p.marketCapitalization * 1_000_000
+          : null,
+      currency: typeof p.currency === "string" ? p.currency : "USD",
+      exchange: typeof p.exchange === "string" ? p.exchange : null,
+      asOf: new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fromFinnhub(): Promise<Quote[] | null> {
+  const key = process.env.FINNHUB_API_KEY;
+  if (!key) return null;
+  try {
+    const results = await Promise.all(
+      TICKERS.map((t) => finnhubOne(t, key))
+    );
+    if (!results.some((r) => r && r.price !== null)) return null;
+    return results.map(
+      (r, i) =>
+        r ?? {
+          symbol: TICKERS[i],
+          price: null,
+          change: null,
+          changePercent: null,
+          marketCap: null,
+          currency: null,
+          exchange: null,
+          asOf: new Date().toISOString(),
+        }
+    );
+  } catch {
+    return null;
+  }
+}
 
 async function fromYahoo(): Promise<Quote[] | null> {
   try {
@@ -91,14 +169,21 @@ export async function GET() {
   let quotes: Quote[] | null = null;
   let source: Source = "none";
 
-  quotes = await fromYahoo();
-  if (quotes && quotes.some((q) => q.price !== null)) {
-    source = "yahoo";
+  const finnhub = await fromFinnhub();
+  if (finnhub && finnhub.some((q) => q.price !== null)) {
+    quotes = finnhub;
+    source = "finnhub";
   } else {
-    const fallback = await fromStooq();
-    if (fallback && fallback.some((q) => q.price !== null)) {
-      quotes = fallback;
-      source = "stooq";
+    const yahoo = await fromYahoo();
+    if (yahoo && yahoo.some((q) => q.price !== null)) {
+      quotes = yahoo;
+      source = "yahoo";
+    } else {
+      const stooq = await fromStooq();
+      if (stooq && stooq.some((q) => q.price !== null)) {
+        quotes = stooq;
+        source = "stooq";
+      }
     }
   }
 

@@ -16,7 +16,15 @@ GOOGL · AMD · ABBV · TSM
 4. **Overlap Detector** — thematic concentration / co-movement
 5. **Scenario Stress Test** — three thematic shock scenarios with per-position moves + aggregate impact
 
-Quotes come from Yahoo Finance via the unofficial `yahoo-finance2` npm package — no API key required. The advisor commentary lives in `lib/portfolio.ts` and is the actual product surface.
+Quotes come from a 3-tier fallback chain — the advisor commentary lives in `lib/portfolio.ts` and is the actual product surface.
+
+### Quote data fallback chain
+
+1. **Finnhub** (primary, recommended for production) — requires `FINNHUB_API_KEY`. Reliable from cloud IPs (Railway / Vercel / Fly), free tier = 60 calls/min, returns price + change + market cap.
+2. **Yahoo Finance** via `yahoo-finance2` — no key, but Yahoo rate-limits / blocks most cloud IPs. Works fine locally.
+3. **Stooq CSV** — no key, public CSV, used as a last-resort fallback. Often returns `N/D` from datacenter IPs.
+
+Get a free Finnhub key at [finnhub.io/register](https://finnhub.io/register) and set `FINNHUB_API_KEY` in your environment. Without it the app falls through to Yahoo, then Stooq, then graceful "—" placeholders.
 
 ## Local dev
 
@@ -39,7 +47,7 @@ npm start
 1. Push this folder to a Git repo (GitHub / GitLab).
 2. In Railway, **New Project → Deploy from GitHub repo**, pick the repo.
 3. Railway auto-detects Next.js via Nixpacks. The included `railway.json` sets the start command to `npm start`.
-4. No environment variables required.
+4. In **Variables**, add `FINNHUB_API_KEY` with your free key from [finnhub.io](https://finnhub.io/register). Optional but strongly recommended — cloud IPs are often blocked by Yahoo/Stooq, and Finnhub is built for datacenter use.
 5. Once deployed, Railway gives you a public URL; open it.
 
 If you'd rather deploy via CLI:

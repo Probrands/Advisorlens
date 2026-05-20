@@ -8,7 +8,7 @@ import { formatPct, formatPrice, type Quote } from "@/lib/quotes";
 type QuoteResponse = {
   quotes: Quote[];
   fetchedAt: string;
-  source?: "yahoo" | "stooq" | "none";
+  source?: "finnhub" | "yahoo" | "stooq" | "none";
 };
 
 function formatClock(d: Date) {

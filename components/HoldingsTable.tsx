@@ -12,7 +12,7 @@ import {
 type QuoteResponse = {
   quotes: Quote[];
   fetchedAt: string;
-  source?: "yahoo" | "stooq" | "none";
+  source?: "finnhub" | "yahoo" | "stooq" | "none";
 };
 
 function ConcernDot({ level }: { level: "LOW" | "MED" | "HIGH" }) {
@@ -137,11 +137,13 @@ export function HoldingsTable() {
           {HOLDINGS.length} positions · equal weight assumption
         </span>
         <span className="font-mono uppercase tracking-wider">
-          {data?.source === "yahoo"
-            ? "live quotes · yahoo finance"
-            : data?.source === "stooq"
-              ? "live quotes · stooq (fallback)"
-              : "quotes unavailable"}
+          {data?.source === "finnhub"
+            ? "live quotes · finnhub"
+            : data?.source === "yahoo"
+              ? "live quotes · yahoo finance"
+              : data?.source === "stooq"
+                ? "live quotes · stooq (fallback)"
+                : "quotes unavailable"}
         </span>
       </div>
     </div>
